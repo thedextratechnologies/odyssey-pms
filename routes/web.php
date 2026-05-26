@@ -1,72 +1,79 @@
 <?php
 
-use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\{ForgotPasswordController, LoginController};
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Lead\LeadController;
+use App\Http\Controllers\Franchise\FranchiseController;
+use App\Http\Controllers\Product\ProductController;
+use App\Http\Controllers\Quotation\QuotationController;
+use App\Http\Controllers\Report\ReportController;
 use Illuminate\Support\Facades\Route;
 
-// ── Guest routes ───────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
-
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotForm'])->name('password.request');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->name('password.email');
     Route::get('/reset-password/{token}', [ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('password.update');
 });
 
-// ── Authenticated routes ───────────────────────────────────────
-Route::middleware(['auth'])->group(function () {
-
-    // Logout
+Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
-
-    // Force password change
     Route::get('/change-password', [LoginController::class, 'showChangePasswordForm'])->name('auth.change-password');
     Route::post('/change-password', [LoginController::class, 'changePassword']);
 
-    // All routes below also require password change check
-    Route::middleware(['must.change.password'])->group(function () {
+    Route::middleware('must.change.password')->group(function () {
 
-        // Dashboard
-        Route::get('/', fn() => view('dashboard'))->name('dashboard');
+        Route::get('/', function() {
+            $user = auth()->user();
+            $stats = [
+                'active_leads'      => \App\Models\Lead::query()->visibleTo($user)->whereNotIn('stage',['won','lost'])->count(),
+                'open_quotes'       => \App\Models\Quotation::query()->visibleTo($user)->whereIn('status',['draft','pending_bdm','pending_zm','pending_sd'])->count(),
+                'pending_approvals' => \App\Models\Quotation::query()->visibleTo($user)
+                    ->when($user->isBDM(), fn($q)=>$q->where('status','pending_bdm'))
+                    ->when($user->isZoneManager(), fn($q)=>$q->whereIn('status',['pending_bdm','pending_zm']))
+                    ->when($user->isSalesDirector()||$user->isSuperAdmin(), fn($q)=>$q->whereIn('status',['pending_bdm','pending_zm','pending_sd']))
+                    ->count(),
+                'won_this_month'    => \App\Models\Lead::query()->visibleTo($user)->where('stage','won')->whereMonth('updated_at',date('m'))->count(),
+                'pipeline_value'    => \App\Models\Quotation::query()->visibleTo($user)->whereIn('status',['pending_bdm','pending_zm','pending_sd','approved'])->sum('total'),
+                'won_value'         => \App\Models\Quotation::query()->visibleTo($user)->where('status','won')->whereMonth('updated_at',date('m'))->sum('total'),
+            ];
+            $recentLeads  = \App\Models\Lead::with(['customer','assignedTo'])->visibleTo($user)->latest()->limit(5)->get();
+            $recentQuotes = \App\Models\Quotation::with(['customer','product'])->visibleTo($user)->latest()->limit(5)->get();
+            $overdueFollowups = \App\Models\Lead::visibleTo(\App\Models\Lead::query(), $user)->where('follow_up_at','<',now())->whereNotIn('stage',['won','lost'])->count();
+            return view('dashboard', compact('stats','recentLeads','recentQuotes','overdueFollowups'));
+        })->name('dashboard');
 
-        // Leads (placeholder - Module 2)
-        Route::get('/leads', fn() => view('coming-soon', ['module' => 'Leads & Customers']))->name('leads.index');
+        Route::get('/profile', fn() => view('coming-soon',['module'=>'My Profile']))->name('profile.edit');
 
-        // Quotations (placeholder - Module 3)
-        Route::get('/quotations', fn() => view('coming-soon', ['module' => 'Quotations']))->name('quotations.index');
+        Route::resource('leads', LeadController::class);
+        Route::resource('franchises', FranchiseController::class);
+        Route::resource('quotations', QuotationController::class);
 
-        // Approvals (placeholder - Module 4)
-        Route::get('/approvals', fn() => view('coming-soon', ['module' => 'Approvals']))->name('approvals.index');
+        Route::post('/quotations/{quotation}/submit', [QuotationController::class, 'submit'])->name('quotations.submit');
+        Route::post('/quotations/{quotation}/approve', [QuotationController::class, 'approve'])->name('quotations.approve');
+        Route::post('/quotations/{quotation}/reject', [QuotationController::class, 'reject'])->name('quotations.reject');
+        Route::post('/quotations/{quotation}/revision', [QuotationController::class, 'requestRevision'])->name('quotations.revision');
+        Route::post('/quotations/{quotation}/won', [QuotationController::class, 'markWon'])->name('quotations.won');
+        Route::post('/quotations/{quotation}/lost', [QuotationController::class, 'markLost'])->name('quotations.lost');
 
-        // Franchises (placeholder - Module 5)
-        Route::get('/franchises', fn() => view('coming-soon', ['module' => 'Franchise Management']))->name('franchises.index');
+        Route::get('/approvals', [QuotationController::class, 'pendingApprovals'])->name('approvals.index');
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/quotations', [ReportController::class, 'quotations'])->name('reports.quotations');
 
-        // Reports (placeholder - Module 6)
-        Route::get('/reports', fn() => view('coming-soon', ['module' => 'Reports']))->name('reports.index');
-
-        // Profile
-        Route::get('/profile', fn() => view('coming-soon', ['module' => 'My Profile']))->name('profile.edit');
-
-        // ── Admin routes ─────────────────────────────────────────
         Route::prefix('admin')->name('admin.')->group(function () {
-
-            // User Management
             Route::resource('users', UserController::class);
             Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
             Route::get('/users/districts', [UserController::class, 'getDistricts'])->name('users.districts');
             Route::get('/users/cities', [UserController::class, 'getCities'])->name('users.cities');
-
-            // Territories (placeholder - Module 2)
-            Route::get('/territories', fn() => view('coming-soon', ['module' => 'Territory Management']))->name('territories.index');
-
-            // Products & Pricing (placeholder - Module 3)
-            Route::get('/products', fn() => view('coming-soon', ['module' => 'Products & Pricing']))->name('products.index');
-
-            // Audit Logs (placeholder)
-            Route::get('/audit-logs', fn() => view('coming-soon', ['module' => 'Audit Logs']))->name('audit-logs.index');
+            Route::get('/territories', fn()=>view('coming-soon',['module'=>'Territory Management']))->name('territories.index');
+            Route::get('/audit-logs', fn()=>view('coming-soon',['module'=>'Audit Logs']))->name('audit-logs.index');
+            Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+            Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+            Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+            Route::post('/products/addons', [ProductController::class, 'storeAddon'])->name('products.addons.store');
+            Route::get('/products/addons/list', [ProductController::class, 'getAddons'])->name('products.addons.list');
         });
     });
 });
