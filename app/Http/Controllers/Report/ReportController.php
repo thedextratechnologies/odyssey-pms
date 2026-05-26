@@ -19,13 +19,13 @@ class ReportController extends Controller {
         }
 
         // Monthly quotations
-        $monthlyQuotes = Quotation::visibleTo($user)
+        $monthlyQuotes = Quotation::query()->visibleTo($user)
             ->selectRaw('MONTH(created_at) as month, COUNT(*) as count, SUM(total) as value')
             ->whereYear('created_at', date('Y'))
             ->groupBy('month')->orderBy('month')->get();
 
         // Product mix
-        $productMix = Quotation::visibleTo($user)
+        $productMix = Quotation::query()->visibleTo($user)
             ->join('products','quotations.product_id','=','products.id')
             ->selectRaw('products.family, COUNT(*) as count, SUM(quotations.total) as value')
             ->groupBy('products.family')->get();
@@ -38,10 +38,10 @@ class ReportController extends Controller {
         $stats = [
             'total_leads'       => Lead::query()->visibleTo($user)->count(),
             'won_leads'         => Lead::query()->visibleTo($user)->where('stage','won')->count(),
-            'total_quotes'      => Quotation::visibleTo($user)->count(),
-            'approved_quotes'   => Quotation::visibleTo($user)->where('status','approved')->count(),
-            'pipeline_value'    => Quotation::visibleTo($user)->whereIn('status',['pending_bdm','pending_zm','pending_sd','approved'])->sum('total'),
-            'won_value'         => Quotation::visibleTo($user)->where('status','won')->sum('total'),
+            'total_quotes'      => Quotation::query()->visibleTo($user)->count(),
+            'approved_quotes'   => Quotation::query()->visibleTo($user)->where('status','approved')->count(),
+            'pipeline_value'    => Quotation::query()->visibleTo($user)->whereIn('status',['pending_bdm','pending_zm','pending_sd','approved'])->sum('total'),
+            'won_value'         => Quotation::query()->visibleTo($user)->where('status','won')->sum('total'),
         ];
 
         return view('reports.index', compact('funnelData','monthlyQuotes','productMix','topPerformers','stats'));

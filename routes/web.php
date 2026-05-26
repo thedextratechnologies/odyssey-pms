@@ -41,7 +41,7 @@ Route::middleware('auth')->group(function () {
             ];
             $recentLeads  = \App\Models\Lead::with(['customer','assignedTo'])->visibleTo($user)->latest()->limit(5)->get();
             $recentQuotes = \App\Models\Quotation::with(['customer','product'])->visibleTo($user)->latest()->limit(5)->get();
-            $overdueFollowups = \App\Models\Lead::visibleTo(\App\Models\Lead::query(), $user)->where('follow_up_at','<',now())->whereNotIn('stage',['won','lost'])->count();
+            $overdueFollowups = \App\Models\Lead::query()->visibleTo($user)->where('follow_up_at','<',now())->whereNotIn('stage',['won','lost'])->count();
             return view('dashboard', compact('stats','recentLeads','recentQuotes','overdueFollowups'));
         })->name('dashboard');
 
