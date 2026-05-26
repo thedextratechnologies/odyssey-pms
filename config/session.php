@@ -1,22 +1,20 @@
 <?php
-
 use Illuminate\Support\Str;
-
 return [
     'driver'          => env('SESSION_DRIVER', 'file'),
-    'lifetime'        => env('SESSION_LIFETIME', 60),
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
-    'encrypt'         => env('SESSION_ENCRYPT', false),
+    'lifetime'        => env('SESSION_LIFETIME', 120),
+    'expire_on_close' => false,
+    'encrypt'         => false,
     'files'           => storage_path('framework/sessions'),
-    'connection'      => env('SESSION_CONNECTION'),
-    'table'           => env('SESSION_TABLE', 'sessions'),
-    'store'           => env('SESSION_STORE'),
+    'connection'      => null,
+    'table'           => 'sessions',
+    'store'           => null,
     'lottery'         => [2, 100],
     'cookie'          => env('SESSION_COOKIE', Str::slug(env('APP_NAME', 'odyssey'), '_').'_session'),
-    'path'            => env('SESSION_PATH', '/'),
+    'path'            => '/',
     'domain'          => env('SESSION_DOMAIN'),
-    'secure'          => env('SESSION_SECURE_COOKIE', true),
-    'http_only'       => env('SESSION_HTTP_ONLY', true),
-    'same_site'       => env('SESSION_SAME_SITE', 'lax'),
-    'partitioned'     => env('SESSION_PARTITIONED_COOKIE', false),
+    'secure'          => false,   // MUST be false on Railway
+    'http_only'       => true,
+    'same_site'       => 'lax',
+    'partitioned'     => false,
 ];
