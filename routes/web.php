@@ -7,6 +7,8 @@ use App\Http\Controllers\Franchise\FranchiseController;
 use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Quotation\QuotationController;
 use App\Http\Controllers\Report\ReportController;
+use App\Http\Controllers\Territory\TerritoryController;
+use App\Http\Controllers\Admin\AuditLogController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -67,8 +69,13 @@ Route::middleware('auth')->group(function () {
             Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
             Route::get('/users/districts', [UserController::class, 'getDistricts'])->name('users.districts');
             Route::get('/users/cities', [UserController::class, 'getCities'])->name('users.cities');
-            Route::get('/territories', fn()=>view('coming-soon',['module'=>'Territory Management']))->name('territories.index');
-            Route::get('/audit-logs', fn()=>view('coming-soon',['module'=>'Audit Logs']))->name('audit-logs.index');
+            Route::get('/territories', [TerritoryController::class, 'index'])->name('territories.index');
+            Route::post('/territories', [TerritoryController::class, 'store'])->name('admin.territories.store');
+            Route::put('/territories/{territory}', [TerritoryController::class, 'update'])->name('admin.territories.update');
+            Route::patch('/territories/{territory}/toggle', [TerritoryController::class, 'toggle'])->name('admin.territories.toggle');
+            Route::delete('/territories/{territory}', [TerritoryController::class, 'destroy'])->name('admin.territories.destroy');
+            Route::get('/territories/districts', [TerritoryController::class, 'getDistricts'])->name('admin.territories.districts');
+            Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs.index');
             Route::get('/products', [ProductController::class, 'index'])->name('products.index');
             Route::post('/products', [ProductController::class, 'store'])->name('products.store');
             Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
