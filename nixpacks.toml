@@ -1,10 +1,14 @@
+[variables]
+COMPOSER_ALLOW_SUPERUSER = "1"
+
 [phases.install]
-cmds = ["composer install --no-dev --optimize-autoloader --no-interaction"]
+cmds = ["composer install --no-dev --optimize-autoloader --no-interaction --no-scripts"]
 
 [phases.build]
 cmds = [
     "cp .env.example .env",
-    "php artisan key:generate"
+    "php artisan key:generate",
+    "composer run-script post-autoload-dump || true"
 ]
 
 [start]
