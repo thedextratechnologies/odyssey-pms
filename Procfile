@@ -1,1 +1,1 @@
-web: php artisan migrate --force --no-interaction && php artisan db:seed --force --no-interaction; php artisan config:clear; php artisan route:clear; php artisan view:clear; php artisan cache:clear; php artisan storage:link --force; php artisan key:generate --force; php artisan serve --host=0.0.0.0 --port=${PORT}
+web: php artisan migrate --force --no-interaction; php artisan config:clear; php artisan route:clear; php artisan view:clear; php artisan cache:clear; php artisan storage:link --force; php artisan serve --host=0.0.0.0 --port=${PORT}
