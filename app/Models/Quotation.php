@@ -4,6 +4,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 
 class Quotation extends Model {
     use SoftDeletes;
@@ -26,6 +27,7 @@ class Quotation extends Model {
     public function product(): BelongsTo { return $this->belongsTo(Product::class); }
     public function items(): HasMany { return $this->hasMany(QuotationItem::class); }
     public function approvals(): HasMany { return $this->hasMany(Approval::class); }
+
     public function getStatusLabelAttribute(): string { return self::STATUS_LABELS[$this->status] ?? ucfirst($this->status); }
     public function getStatusColorAttribute(): string { return self::STATUS_COLORS[$this->status] ?? 'gray'; }
 
@@ -33,15 +35,6 @@ class Quotation extends Model {
         $year = date('Y');
         $last = static::whereYear('created_at', $year)->count() + 1;
         return 'OE-' . $year . '-' . str_pad($last, 4, '0', STR_PAD_LEFT);
-    }
-
-    public function getNextApprovalRole(): ?string {
-        return match($this->status) {
-            'pending_bdm' => 'bdm',
-            'pending_zm'  => 'zone_manager',
-            'pending_sd'  => 'sales_director',
-            default       => null,
-        };
     }
 
     public function canBeApprovedBy(User $user): bool {
@@ -53,7 +46,8 @@ class Quotation extends Model {
         };
     }
 
-    public function scopeVisibleTo($query, User $user) {
+    // Fix: $query auto-injected by Laravel
+    public function scopeVisibleTo(Builder $query, User $user): Builder {
         if ($user->isSuperAdmin() || $user->isSalesDirector()) return $query;
         if ($user->isZoneManager()) return $query->whereHas('createdBy', fn($q)=>$q->where('state_id',$user->state_id));
         if ($user->isBDM()) return $query->whereHas('createdBy', fn($q)=>$q->where('district_id',$user->district_id));
